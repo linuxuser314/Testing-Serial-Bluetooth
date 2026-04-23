@@ -3,7 +3,7 @@ myiolib.h library header file version 1.0
 This library was created by Creed Truman.
 It was created for Sudeepa Pathak's EGR-150-AF01 Class in Spring 2026.
 This library is licensed under the MIT License.
-This version was last updated on 4/22/2026.
+This version was last updated on 4/23/2026.
 
 Credit to Google Gemini for helping me debug and optimize the code, for explaining AVR architecture, and helping me get started with VSCode.
 
@@ -84,6 +84,13 @@ void serialPrintChar(char c){
 	while (!(UCSR0A & (1 << UDRE0))); //Wait until the transmit buffer is empty by checking the UDRE0 bit in the UCSR0A register. This ensures that we don't overwrite any data that is currently being transmitted.
 	UDR0 = c; //Put the character to be transmitted into the UDR0 register, which is the transmit buffer. This starts the transmission of the character.
 }
+void serialTransmitMsg(char id, uint8_t val){
+	//This is a simple function to transmit a message with an ID and a value. The ID is a single character that identifies the type of message, and the value is an 8-bit unsigned integer that contains the data.
+	char msg[5] = {'<', id, val, (char)(val + id), '>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.
+	for(int i = 0; i < 5; i++){
+		serialPrintChar(msg[i]);
+	}
+}	
 
 inline bool myDigitalRead(const PinStruct target){
 	return *target.pin & (1 << target.bit);
