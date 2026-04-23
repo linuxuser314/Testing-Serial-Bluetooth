@@ -84,6 +84,8 @@ inline void serialPrintChar(char c){
 	while (!(UCSR0A & (1 << UDRE0))); //Wait until the transmit buffer is empty by checking the UDRE0 bit in the UCSR0A register. This ensures that we don't overwrite any data that is currently being transmitted.
 	UDR0 = c; //Put the character to be transmitted into the UDR0 register, which is the transmit buffer. This starts the transmission of the character.
 }
+
+//This code is all for the checksummed transmission and such.
 inline void serialTransmitMsg(char id, uint8_t val){
 	//This is a simple function to transmit a message with an ID and a value. The ID is a single character that identifies the type of message, and the value is an 8-bit unsigned integer that contains the data.
 	uint8_t msg[5] = {(uint8_t)'<', (uint8_t)id, val, (uint8_t)(val + (uint8_t)id), (uint8_t)'>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.

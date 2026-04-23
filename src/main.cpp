@@ -1,5 +1,7 @@
 #include "myiolib.h"
 
+//This is just a testbench for my checksummed wireless serial communication.
+//It just echoes back valid messages.
 
 int main(void){
   initSerial9600();
@@ -11,7 +13,6 @@ int main(void){
     if(msgStructure.id != '\0'){
       serialTransmitMsg(msgStructure.id, msgStructure.val);
     }
-  myDelay(100);
   }
 
 }
