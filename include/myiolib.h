@@ -97,7 +97,7 @@ struct msgStruct{
 	char id;
 	uint8_t val;
 };
-volatile msgStruct lastPacket = {0, 0};
+volatile msgStruct lastPacket = {'\0', 0};
 
 ISR(USART_RX_vect){
 	//This is the interrupt service routine for the USART receive complete interrupt. It is called whenever a character is received on the serial port. This is where you would put code to handle incoming serial data, such as parsing messages or storing data in a buffer.
@@ -107,11 +107,12 @@ ISR(USART_RX_vect){
 		rxBuffer[rxIndex] = UDR0; //Read the received character from the UDR0 register and store it in the rxBuffer. This is necessary to clear the receive buffer and allow the next character to be received.
 		rxIndex++;
 	}
-	else{
+	else if(rxIndex == 5){
 		if(rxBuffer[0] == '<' && rxBuffer[4] == '>' && rxBuffer[3] == (uint8_t)(rxBuffer[1] + rxBuffer[2])){
 			//This checks if the received message is valid by checking the start and end characters and the checksum. If the message is valid, you would put code here to handle the message based on the ID and value. For example, if the ID is 'A', you might set a variable to the value, or if the ID is 'S', you might call a function with the value as an argument.
 			lastPacket.id = rxBuffer[1];
 			lastPacket.val = rxBuffer[2];
+			rxIndex = 0;
 		}
 		else{
 			rxBuffer[0] = rxBuffer[1];
@@ -128,10 +129,12 @@ ISR(USART_RX_vect){
 }
 
 inline msgStruct readSerialMsg(){
+	cli();
 	char tmpid = lastPacket.id;
 	uint8_t tmpval = lastPacket.val;
-	lastPacket.id = 0;
+	lastPacket.id = '\0';
 	lastPacket.val = 0;
+	sei();
 	return (msgStruct){tmpid, tmpval};
 }
 
