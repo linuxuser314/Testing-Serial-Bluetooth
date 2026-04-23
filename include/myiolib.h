@@ -66,7 +66,7 @@ constexpr uint8_t OFF = 0;
 constexpr uint8_t IN = 0;
 constexpr uint8_t OUT = 1;
 
-void initSerial9600(void){
+inline void initSerial9600(void){
 	//This formula is from the AVR datasheet. It calculates the value to put in the UBRR0H and UBRR0L registers to set the baud rate to 9600. The formula is (F_CPU / (16 * baud)) - 1, where F_CPU is the clock frequency of the microcontroller (16MHz in this case) and baud is the desired baud rate (9600 in this case). To adjust the baud rate speed, simply change 9600. the UL is necessary to tell the compiler that these are unsigned long constants, which is important for the calculation to work correctly.
 	uint16_t ubrr = 16000000UL / (16UL * 9600UL) - 1;
 	//This sets the low and high bytes of the UBRR0 register. It is necessary to set them in this manner because sometimes ubrr is greater than 255, which is the maximum value that can be stored in an 8-bit register. By shifting ubrr to the right by 8 bits, we get the high byte, and by casting ubrr to uint8_t, we get the low byte.
@@ -80,17 +80,58 @@ void initSerial9600(void){
 
 }
 
-void serialPrintChar(char c){
+inline void serialPrintChar(char c){
 	while (!(UCSR0A & (1 << UDRE0))); //Wait until the transmit buffer is empty by checking the UDRE0 bit in the UCSR0A register. This ensures that we don't overwrite any data that is currently being transmitted.
 	UDR0 = c; //Put the character to be transmitted into the UDR0 register, which is the transmit buffer. This starts the transmission of the character.
 }
-void serialTransmitMsg(char id, uint8_t val){
+inline void serialTransmitMsg(char id, uint8_t val){
 	//This is a simple function to transmit a message with an ID and a value. The ID is a single character that identifies the type of message, and the value is an 8-bit unsigned integer that contains the data.
-	char msg[5] = {'<', id, val, (char)(val + id), '>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.
+	char msg[5] = {'<', id, val, (uint8_t)(val + (uint8_t)id), '>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.
 	for(int i = 0; i < 5; i++){
 		serialPrintChar(msg[i]);
 	}
 }	
+
+
+struct msgStruct{
+	char id;
+	uint8_t val;
+};
+volatile msgStruct lastPacket = {0, 0};
+
+ISR(USART_RX_vect){
+	//This is the interrupt service routine for the USART receive complete interrupt. It is called whenever a character is received on the serial port. This is where you would put code to handle incoming serial data, such as parsing messages or storing data in a buffer.
+	static uint8_t rxIndex = 0;
+	static uint8_t rxBuffer[5];
+	if(rxIndex < 5){
+		rxBuffer[rxIndex] = UDR0; //Read the received character from the UDR0 register and store it in the rxBuffer. This is necessary to clear the receive buffer and allow the next character to be received.
+		rxIndex++;
+	}
+	else{
+		if(rxBuffer[0] == '<' && rxBuffer[4] == '>' && rxBuffer[3] == (uint8_t)(rxBuffer[1] + rxBuffer[2])){
+			//This checks if the received message is valid by checking the start and end characters and the checksum. If the message is valid, you would put code here to handle the message based on the ID and value. For example, if the ID is 'A', you might set a variable to the value, or if the ID is 'S', you might call a function with the value as an argument.
+			lastPacket.id = rxBuffer[1];
+			lastPacket.val = rxBuffer[2];
+		}
+		else{
+			rxBuffer[0] = rxBuffer[1];
+			rxBuffer[1] = rxBuffer[2];
+			rxBuffer[2] = rxBuffer[3];
+			rxBuffer[3] = rxBuffer[4];
+			rxIndex = 4;
+		}
+		//After handling the message, you would reset rxIndex to 0 to start receiving the next message.
+		rxIndex = 0;
+	}
+
+
+}
+
+inline msgStruct readSerialMsg(){
+	msgStruct val = lastPacket;
+	lastPacket = {0, 0};
+	return val;
+}
 
 inline bool myDigitalRead(const PinStruct target){
 	return *target.pin & (1 << target.bit);
