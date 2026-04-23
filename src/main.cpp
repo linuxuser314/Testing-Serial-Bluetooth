@@ -3,6 +3,7 @@
 
 int main(void){
   initSerial9600();
+  initTimer2Millis();
   myDelay(3000);
 
   while(true){

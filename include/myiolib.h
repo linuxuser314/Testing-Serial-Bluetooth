@@ -74,7 +74,7 @@ inline void initSerial9600(void){
 	UBRR0L = (uint8_t)ubrr;
 
 	//This enables the receiver and transmitter by setting the RXEN0 and TXEN0 bits in the UCSR0B register. This switches a multiplexer that links the serial functions to the pins, allowing us to use the TX and RX pins for serial communication instead of digital IO.
-	UCSR0B = (1 << RXEN0) | (1 << TXEN0);
+	UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); //I also enabled the RX Complete Interrupt by setting the RXCIE0 bit. This allows us to use an interrupt service routine to handle incoming serial data, which is more efficient than polling for data in the main loop.
 
 	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00); //This sets the frame format to 8 data bits, no parity, and 1 stop bit by setting the USBS0, UCSZ01, and UCSZ00 bits in the UCSR0C register. This is a common frame format for serial communication.
 
@@ -86,7 +86,7 @@ inline void serialPrintChar(char c){
 }
 inline void serialTransmitMsg(char id, uint8_t val){
 	//This is a simple function to transmit a message with an ID and a value. The ID is a single character that identifies the type of message, and the value is an 8-bit unsigned integer that contains the data.
-	char msg[5] = {'<', id, val, (uint8_t)(val + (uint8_t)id), '>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.
+	uint8_t msg[5] = {(uint8_t)'<', (uint8_t)id, val, (uint8_t)(val + (uint8_t)id), (uint8_t)'>'}; //The message is formatted as <ID, value, checksum>, where the checksum is simply the sum of the ID and value. This is a very basic form of error checking to ensure that the message is received correctly. The start and end characters (< and >) are used to indicate the beginning and end of the message, which can be useful for parsing the message on the receiving end.
 	for(int i = 0; i < 5; i++){
 		serialPrintChar(msg[i]);
 	}
@@ -128,9 +128,11 @@ ISR(USART_RX_vect){
 }
 
 inline msgStruct readSerialMsg(){
-	msgStruct val = lastPacket;
-	lastPacket = {0, 0};
-	return val;
+	char tmpid = lastPacket.id;
+	uint8_t tmpval = lastPacket.val;
+	lastPacket.id = 0;
+	lastPacket.val = 0;
+	return (msgStruct){tmpid, tmpval};
 }
 
 inline bool myDigitalRead(const PinStruct target){
